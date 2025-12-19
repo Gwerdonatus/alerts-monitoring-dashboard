@@ -1,4 +1,4 @@
-# Python
+# ===== Python =====
 venv/
 .venv/
 env/
@@ -6,19 +6,19 @@ __pycache__/
 *.py[cod]
 *.sqlite3
 
-# Django
+# ===== Django =====
 staticfiles/
 media/
 
-# Node / React
+# ===== Node / React =====
 node_modules/
 build/
 dist/
 
-# Logs
+# ===== Logs / Temp =====
 *.log
 bash.exe.stackdump
 
-# OS
+# ===== OS =====
 .DS_Store
 Thumbs.db

@@ -1,0 +1,178 @@
+[
+    {
+      "model": "alerts.employee",
+      "pk": "MGR001",
+      "fields": {
+        "name": "Jane Manager",
+        "reports_to": null
+      }
+    },
+    {
+      "model": "alerts.employee",
+      "pk": "EMP001",
+      "fields": {
+        "name": "Alice Employee",
+        "reports_to": "MGR001"
+      }
+    },
+    {
+      "model": "alerts.employee",
+      "pk": "EMP002",
+      "fields": {
+        "name": "Bob Employee",
+        "reports_to": "MGR001"
+      }
+    },
+    {
+      "model": "alerts.employee",
+      "pk": "EMP003",
+      "fields": {
+        "name": "Charlie Employee",
+        "reports_to": "MGR001"
+      }
+    },
+    {
+      "model": "alerts.employee",
+      "pk": "EMP004",
+      "fields": {
+        "name": "David Employee",
+        "reports_to": "MGR001"
+      }
+    },
+    {
+      "model": "alerts.employee",
+      "pk": "EMP005",
+      "fields": {
+        "name": "Eve Employee",
+        "reports_to": "MGR001"
+      }
+    },
+    {
+      "model": "alerts.employee",
+      "pk": "EMP006",
+      "fields": {
+        "name": "Frank Employee",
+        "reports_to": "MGR001"
+      }
+    },
+    {
+      "model": "alerts.employee",
+      "pk": "EMP007",
+      "fields": {
+        "name": "Grace Employee",
+        "reports_to": "MGR001"
+      }
+    },
+  
+    {
+      "model": "alerts.alert",
+      "pk": "ALRT001",
+      "fields": {
+        "employee": "EMP001",
+        "severity": "high",
+        "category": "Missed check-in",
+        "status": "open",
+        "created_at": "2025-12-18T16:18:00Z"
+      }
+    },
+    {
+      "model": "alerts.alert",
+      "pk": "ALRT002",
+      "fields": {
+        "employee": "EMP002",
+        "severity": "medium",
+        "category": "Performance alert",
+        "status": "open",
+        "created_at": "2025-12-18T16:19:00Z"
+      }
+    },
+    {
+      "model": "alerts.alert",
+      "pk": "ALRT003",
+      "fields": {
+        "employee": "EMP003",
+        "severity": "low",
+        "category": "Late report",
+        "status": "dismissed",
+        "created_at": "2025-12-18T16:20:00Z"
+      }
+    },
+    {
+      "model": "alerts.alert",
+      "pk": "ALRT004",
+      "fields": {
+        "employee": "EMP004",
+        "severity": "high",
+        "category": "Missed meeting",
+        "status": "open",
+        "created_at": "2025-12-18T16:21:00Z"
+      }
+    },
+    {
+      "model": "alerts.alert",
+      "pk": "ALRT005",
+      "fields": {
+        "employee": "EMP005",
+        "severity": "medium",
+        "category": "Performance alert",
+        "status": "dismissed",
+        "created_at": "2025-12-18T16:22:00Z"
+      }
+    },
+    {
+      "model": "alerts.alert",
+      "pk": "ALRT006",
+      "fields": {
+        "employee": "EMP006",
+        "severity": "low",
+        "category": "Missed check-in",
+        "status": "open",
+        "created_at": "2025-12-18T16:23:00Z"
+      }
+    },
+    {
+      "model": "alerts.alert",
+      "pk": "ALRT007",
+      "fields": {
+        "employee": "EMP007",
+        "severity": "medium",
+        "category": "Performance alert",
+        "status": "open",
+        "created_at": "2025-12-18T16:24:00Z"
+      }
+    },
+    {
+      "model": "alerts.alert",
+      "pk": "ALRT008",
+      "fields": {
+        "employee": "EMP001",
+        "severity": "high",
+        "category": "Critical issue",
+        "status": "open",
+        "created_at": "2025-12-18T16:25:00Z"
+      }
+    },
+    {
+      "model": "alerts.alert",
+      "pk": "ALRT009",
+      "fields": {
+        "employee": "EMP002",
+        "severity": "low",
+        "category": "Documentation missing",
+        "status": "dismissed",
+        "created_at": "2025-12-18T16:26:00Z"
+      }
+    },
+    {
+      "model": "alerts.alert",
+      "pk": "ALRT010",
+      "fields": {
+        "employee": "EMP003",
+        "severity": "medium",
+        "category": "Late report",
+        "status": "open",
+        "created_at": "2025-12-18T16:27:00Z"
+      }
+    }
+  ]
+  

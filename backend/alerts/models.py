@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 
@@ -8,6 +9,13 @@ class Employee(models.Model):
     """
     id = models.CharField(max_length=16, primary_key=True)
     name = models.CharField(max_length=255)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="employee_profile",
+    )
     reports_to = models.ForeignKey(
         'self',
         null=True,

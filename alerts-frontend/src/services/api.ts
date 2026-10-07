@@ -6,9 +6,14 @@ import { Alert, PaginatedResponse } from "../types";
 
 const API_BASE_URL =
   process.env.REACT_APP_API_BASE_URL ?? "http://localhost:8000";
+export const CONFIGURED_API_TOKEN = process.env.REACT_APP_API_TOKEN ?? "";
+
+function authenticatedHeaders(token: string): HeadersInit {
+  return token ? { Authorization: `Token ${token}` } : {};
+}
 
 export interface FetchAlertsParams {
-  managerId: string;
+  token: string;
   scope: "direct" | "subtree";
   severity?: string;
   status?: string;
@@ -29,7 +34,6 @@ export async function fetchAlerts(
     url = params.pageUrl;
   } else {
     const searchParams = new URLSearchParams();
-    searchParams.set("manager_id", params.managerId.trim());
     searchParams.set("scope", params.scope);
 
     if (params.severity && params.severity !== "all") {
@@ -45,7 +49,10 @@ export async function fetchAlerts(
     url = `${API_BASE_URL}/api/alerts?${searchParams.toString()}`;
   }
 
-  const response = await fetch(url, { signal });
+  const response = await fetch(url, {
+    signal,
+    headers: authenticatedHeaders(params.token),
+  });
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => null);
@@ -60,11 +67,12 @@ export async function fetchAlerts(
 /**
  * Dismiss an alert by ID.
  */
-export async function dismissAlert(alertId: string): Promise<Alert> {
+export async function dismissAlert(alertId: string, token: string): Promise<Alert> {
   const response = await fetch(
     `${API_BASE_URL}/api/alerts/${encodeURIComponent(alertId)}/dismiss`,
     {
       method: "POST",
+      headers: authenticatedHeaders(token),
     }
   );
 
@@ -77,5 +85,3 @@ export async function dismissAlert(alertId: string): Promise<Alert> {
 
   return response.json();
 }
-
-

@@ -1,5 +1,7 @@
+from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.utils import timezone
+from rest_framework.authtoken.models import Token
 
 from alerts.models import Employee, Alert
 
@@ -10,6 +12,13 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.stdout.write(self.style.NOTICE("Seeding alert data..."))
 
+        user, user_created = get_user_model().objects.get_or_create(
+            username="demo-manager"
+        )
+        if user_created:
+            user.set_unusable_password()
+            user.save(update_fields=["password"])
+
         # --- Employees ---
         manager, _ = Employee.objects.get_or_create(
             id="MGR001",
@@ -18,6 +27,9 @@ class Command(BaseCommand):
                 "reports_to": None,
             },
         )
+        if manager.user_id != user.id:
+            manager.user = user
+            manager.save(update_fields=["user"])
 
         employee1, _ = Employee.objects.get_or_create(
             id="EMP002",
@@ -58,4 +70,6 @@ class Command(BaseCommand):
             },
         )
 
+        token, _ = Token.objects.get_or_create(user=user)
         self.stdout.write(self.style.SUCCESS("Seed data created successfully."))
+        self.stdout.write(f"Demo API token: {token.key}")

@@ -1,238 +1,148 @@
 # Alerts Monitoring Dashboard
 
-A full-stack alerts monitoring system built with **React (TypeScript)** and **Django**, designed to help managers monitor, filter, and act on employee alerts efficiently.
+A security-conscious operations dashboard for managers to review, filter, and dismiss employee alerts across an organisational hierarchy. The React/TypeScript client talks to a Django REST API with token authentication, manager-scoped queries, object-level dismissal authorization, and bounded server-side pagination.
 
-This project was completed as a **take-home engineering assignment** and is also maintained as a **portfolio project** to demonstrate clean architecture, real-world UX considerations, and backend-frontend integration.
+> Portfolio project: this demonstrates the architecture and controls expected in an internal operational tool. It is not presented as a deployed production service.
 
----
-![dashboard](https://github.com/user-attachments/assets/de4368b6-61a4-4e30-9967-a2b75343c9b3)
+![Alerts dashboard](https://github.com/user-attachments/assets/de4368b6-61a4-4e30-9967-a2b75343c9b3)
 
-## 🖼️ Dashboard Preview
+## Business problem
 
+Managers need one reliable view of operational alerts without exposing records from unrelated teams. The system supports:
 
+- direct-report and full-subtree views;
+- severity, status, and employee-name filters;
+- bounded, server-side pagination;
+- idempotent alert dismissal; and
+- authenticated, manager-scoped access.
 
-```md
-![dashboard](https://github.com/user-attachments/assets/afabf9d1-1cf9-4436-b3ac-add041847797)
+## Security model
 
+The client never chooses which manager it is acting as. Each API token belongs to a Django user, that user is linked to one employee profile, and the backend derives the manager from the authenticated identity.
+
+- Anonymous requests return `401`.
+- Supplying another `manager_id` cannot impersonate that manager.
+- List queries only include the authenticated manager's direct reports or descendants.
+- Dismissal performs an object-level subtree check and returns `404` for an out-of-scope alert.
+- Tokens are accepted through the `Authorization: Token …` header.
+- The demo UI stores a manually entered token in `sessionStorage`, not persistent browser storage.
+- Django secret key, debug mode, and allowed hosts are environment-controlled.
+
+The local demo token is for development only. A production deployment should use HTTPS, short-lived identity-provider tokens, token rotation, audit events, restrictive CORS settings, and a managed secrets store.
+
+## Architecture
+
+```mermaid
+flowchart TD
+    UI["React dashboard"] -->|"Token + filters"| API["Django REST API"]
+    API --> AUTH["Authenticated user"]
+    AUTH --> PROFILE["Employee profile"]
+    PROFILE --> SCOPE["Direct or subtree scope"]
+    SCOPE --> ALERTS["Authorized alerts"]
+    API --> DB[("SQLite demo database")]
 ```
 
-_(Create a `screenshots/` folder in the root and add your image there.)_
+Key decisions:
 
----
+- A self-referential `Employee.reports_to` relationship models the hierarchy.
+- Breadth-first traversal includes cycle protection for malformed org data.
+- Authorization is calculated server-side and reused for list and mutation paths.
+- Dismissal is idempotent, so retries do not create conflicting state.
+- Pagination is capped at 50 records even when a caller requests more.
+- Invalid scope, severity, or status values fail explicitly with `400` responses.
 
-## 🚀 What This Project Does
-
-The Alerts Monitoring Dashboard allows a manager to:
-
-- View alerts generated for employees
-- Filter alerts by **scope**, **severity**, and **status**
-- Search alerts by employee name
-- Paginate large alert lists
-- Dismiss alerts (idempotent action)
-- Switch between **direct reports** and **entire subtree**
-
-The UI is clean, responsive, and optimized for clarity and speed.
-
----
-
-## 🧠 Key Engineering Decisions
-
-### Frontend
-- Built with **React + TypeScript**
-- Fully controlled filter state
-- Debounced search input for performance
-- Clear loading, empty, and error states
-- Pagination handled cleanly without UI jank
-- TailwindCSS for fast, consistent styling
+## Local setup
 
 ### Backend
-- Built with **Django**
-- Clean data modeling using self-referential relationships
-- Optimized queries using indexes
-- Deterministic seed data for easy testing
-- REST-style API endpoints
 
----
-
-## 🏗️ Project Structure
-
-```
-alerts-monitoring-dashboard/
-│
-├── alerts-frontend/        # React + TypeScript frontend
-│   ├── src/
-│   │   ├── components/
-│   │   ├── api/
-│   │   ├── types/
-│   │   └── App.tsx
-│   └── package.json
-│
-├── backend/                # Django backend
-│   ├── alerts/
-│   │   ├── models.py
-│   │   ├── views.py
-│   │   ├── fixtures/
-│   │   │   └── seed_data.json
-│   └── manage.py
-│
-├── .gitignore
-└── README.md
-```
-
----
-
-## 🧩 Core Features
-
-### ✅ Filtering
-- Scope: **Direct Reports** / **Subtree**
-- Severity: Low / Medium / High
-- Status: Open / Dismissed
-
-### 🔍 Search
-- Search alerts by employee name
-- Debounced input to reduce unnecessary requests
-
-### 📄 Pagination
-- Server-side pagination
-- Clear navigation controls
-- Accurate total counts
-
-### 🔕 Alert Dismissal
-- Idempotent dismiss action
-- UI updates immediately after dismissal
-- Prevents duplicate state changes
-
----
-
-## 🗃️ Data Model Overview
-
-### Employee
-- Self-referential relationship to support org hierarchy
-- Enables subtree traversal
-
-### Alert
-- Linked to an employee
-- Severity and status enums
-- Indexed fields for performance
-
----
-
-## ⚙️ Getting Started (Local Setup)
-
-### 1️⃣ Clone the Repository
+Requires Python 3.12+.
 
 ```bash
-git clone https://github.com/Gwerdonatus/alerts-monitoring-dashboard.git
-cd alerts-monitoring-dashboard
-```
-
----
-
-## 🐍 Backend Setup (Django)
-
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
+python backend/manage.py migrate
+python backend/manage.py seed_alerts
+python backend/manage.py runserver
 ```
 
-### Run Migrations
+The idempotent seed command creates the sample hierarchy, alerts, a `demo-manager` user, and prints its API token. Run it again at any time without duplicating the sample records.
+
+Optional Django environment variables:
 
 ```bash
-python manage.py migrate
+export DJANGO_SECRET_KEY="replace-me"
+export DJANGO_DEBUG="true"
+export DJANGO_ALLOWED_HOSTS="localhost,127.0.0.1"
 ```
 
-### Load Seed Data
+### Frontend
 
-```bash
-python manage.py loaddata seed_data.json
-```
-
-### Start Backend Server
-
-```bash
-python manage.py runserver
-```
-
-Backend runs at:  
-**http://localhost:8000**
-
----
-
-## ⚛️ Frontend Setup (React)
+Requires Node.js 22+.
 
 ```bash
 cd alerts-frontend
-npm install
+npm ci
 npm start
 ```
 
-Frontend runs at:  
-**http://localhost:3000**
+Open `http://localhost:3000` and paste the token printed by `seed_alerts`. Alternatively, copy `.env.example` to `.env.local`, set `REACT_APP_API_TOKEN`, and restart the development server.
 
----
-
-## 🧪 Seed Data Details
-
-- Includes **7+ employees**
-- Includes multiple alerts with mixed:
-  - severities
-  - statuses
-  - timestamps
-- Default manager ID used by frontend:
-  ```
-  MGR001
-  ```
-
-This allows immediate testing of:
-- filtering
-- pagination
-- subtree vs direct reports
-
----
-
-## 🧼 Production Build
+## API examples
 
 ```bash
-npm run build
+curl -H "Authorization: Token $ALERTS_TOKEN" \
+  "http://localhost:8000/api/alerts?scope=subtree&severity=high&status=open&page=1"
+
+curl -X POST -H "Authorization: Token $ALERTS_TOKEN" \
+  "http://localhost:8000/api/alerts/ALT001/dismiss"
 ```
 
-Build output is optimized and ready for deployment.
+## Verification
 
----
+The GitHub Actions workflow runs these independent gates on every push and pull request:
 
-## 🔐 Security & Best Practices
+```bash
+# Backend: migrations, framework checks, authorization/filter/pagination tests,
+# and an 80% coverage floor
+python backend/manage.py check
+python backend/manage.py makemigrations --check --dry-run
+pytest backend --cov=backend/alerts --cov-report=term-missing --cov-fail-under=80
 
-- No secrets committed
-- Environments properly ignored via `.gitignore`
-- Clean separation between frontend and backend
-- Idempotent backend operations
-- Predictable seed data for reviewers
+# Frontend: locked dependency install and production TypeScript build
+cd alerts-frontend
+npm ci
+CI=true npm run build
+```
 
----
+The test suite specifically covers anonymous rejection, cross-manager impersonation attempts, out-of-scope dismissal, idempotent dismissal, nested-report visibility, combined filters, invalid values, empty results, and pagination limits.
 
-## 📌 Possible Enhancements
+## Project structure
 
-- Authentication & role-based access
-- Real-time updates (WebSockets)
-- Alert creation UI
-- Audit logs
-- Export functionality
+```text
+alerts-monitoring-dashboard/
+├── .github/workflows/ci.yml
+├── alerts-frontend/
+│   └── src/
+│       ├── components/
+│       ├── services/api.ts
+│       └── types/
+├── backend/
+│   ├── alerts/
+│   │   ├── management/commands/seed_alerts.py
+│   │   ├── migrations/
+│   │   ├── models.py
+│   │   ├── services.py
+│   │   ├── tests
+│   │   └── views.py
+│   └── diversio_backend/
+└── requirements.txt
+```
 
----
+## Author
 
-## 👤 Author
+Gwer Msughter Donatus — Backend / Full-Stack Engineer
 
-**Gwer Msughter Donatus**  
-Full-Stack Developer (Python / Django / React)
-
-- GitHub: https://github.com/Gwerdonatus
-- LinkedIn: https://www.linkedin.com/in/donatus-gwer-857610338
-
----
-
-## 📄 License
-
-This project is provided for demonstration and evaluation purposes.
-
+- [GitHub](https://github.com/Gwerdonatus)
+- [LinkedIn](https://linkedin.com/in/donatus-gwer)
+- [Portfolio](https://donatus-gwer.vercel.app)

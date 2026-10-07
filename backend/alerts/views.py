@@ -1,6 +1,8 @@
 from typing import List, Set
 
 from django.shortcuts import get_object_or_404
+from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -29,15 +31,9 @@ class AlertsListAPIView(APIView):
     """
 
     pagination_class = StandardResultsSetPagination
+    permission_classes = [IsAuthenticated]
 
     def get(self, request: Request) -> Response:
-        manager_id = request.query_params.get("manager_id")
-        if not manager_id:
-            return Response(
-                {"detail": "manager_id is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         scope = request.query_params.get("scope", "direct")
         if scope not in VALID_SCOPES:
             return Response(
@@ -45,9 +41,9 @@ class AlertsListAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        manager = get_object_or_404(Employee, pk=manager_id)
+        manager = self._manager_for(request)
 
-        employee_ids: List[int] = (
+        employee_ids: List[str] = (
             get_direct_report_ids(manager)
             if scope == "direct"
             else get_subtree_report_ids(manager)
@@ -67,24 +63,25 @@ class AlertsListAPIView(APIView):
 
         return paginator.get_paginated_response(serializer.data)
 
+    @staticmethod
+    def _manager_for(request: Request) -> Employee:
+        try:
+            return request.user.employee_profile
+        except Employee.DoesNotExist as exc:
+            raise PermissionDenied("Authenticated user has no employee profile") from exc
+
     def _apply_filters(self, request: Request, queryset):
         """Apply severity, status, and search filters to the queryset."""
         severity = request.query_params.get("severity")
         if severity:
             severities = severity.split(",")
-            try:
-                self._validate_values(severities, VALID_SEVERITIES, "severity")
-            except ValueError:
-                return queryset.none()
+            self._validate_values(severities, VALID_SEVERITIES, "severity")
             queryset = queryset.filter(severity__in=severities)
 
         status_param = request.query_params.get("status")
         if status_param:
             statuses = status_param.split(",")
-            try:
-                self._validate_values(statuses, VALID_STATUSES, "status")
-            except ValueError:
-                return queryset.none()
+            self._validate_values(statuses, VALID_STATUSES, "status")
             queryset = queryset.filter(status__in=statuses)
 
         search = request.query_params.get("q")
@@ -96,8 +93,11 @@ class AlertsListAPIView(APIView):
     @staticmethod
     def _validate_values(values: List[str], allowed: Set[str], field_name: str) -> None:
         """Validate that all values are in the allowed set."""
-        if any(value not in allowed for value in values):
-            raise ValueError(f"Invalid {field_name}")
+        invalid = sorted(set(values) - allowed)
+        if invalid:
+            raise ValidationError(
+                {field_name: [f"Unsupported value: {value}" for value in invalid]}
+            )
 
 
 class DismissAlertAPIView(APIView):
@@ -105,8 +105,15 @@ class DismissAlertAPIView(APIView):
     Dismiss an alert (idempotent).
     """
 
+    permission_classes = [IsAuthenticated]
+
     def post(self, request: Request, pk: str) -> Response:
-        alert = get_object_or_404(Alert, pk=pk)
+        manager = AlertsListAPIView._manager_for(request)
+        alert = get_object_or_404(
+            Alert.objects.select_related("employee"),
+            pk=pk,
+            employee_id__in=get_subtree_report_ids(manager),
+        )
         alert.dismiss()
         serializer = AlertSerializer(alert)
         return Response(serializer.data, status=status.HTTP_200_OK)

@@ -2,12 +2,18 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, FilterState } from "../types";
 import { Filters } from "./Filters";
 import { AlertsTable } from "./AlertsTable";
-import { fetchAlerts, dismissAlert } from "../services/api";
+import {
+  CONFIGURED_API_TOKEN,
+  fetchAlerts,
+  dismissAlert,
+} from "../services/api";
 
-const INITIAL_MANAGER_ID = "MGR001";
+const TOKEN_STORAGE_KEY = "alerts-dashboard-api-token";
 
 export const AlertsDashboard: React.FC = () => {
-  const [managerId, setManagerId] = useState<string>(INITIAL_MANAGER_ID);
+  const [token, setToken] = useState<string>(() =>
+    CONFIGURED_API_TOKEN || sessionStorage.getItem(TOKEN_STORAGE_KEY) || ""
+  );
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [pagination, setPagination] = useState({
     count: 0,
@@ -26,7 +32,7 @@ export const AlertsDashboard: React.FC = () => {
   const [refreshToken, setRefreshToken] = useState(0);
   const [dismissingId, setDismissingId] = useState<string | null>(null);
 
-  const hasManagerId = managerId.trim().length > 0;
+  const hasToken = token.trim().length > 0;
 
   const queryDescription = useMemo(() => {
     const parts: string[] = [];
@@ -47,7 +53,7 @@ export const AlertsDashboard: React.FC = () => {
   }, [filters]);
 
   useEffect(() => {
-    if (!hasManagerId) {
+    if (!hasToken) {
       setAlerts([]);
       setPagination({ count: 0, next: null, previous: null });
       return;
@@ -62,7 +68,7 @@ export const AlertsDashboard: React.FC = () => {
       try {
         const data = await fetchAlerts(
           {
-            managerId,
+            token: token.trim(),
             scope: filters.scope,
             severity: filters.severity !== "all" ? filters.severity : undefined,
             status: filters.status !== "all" ? filters.status : undefined,
@@ -94,14 +100,14 @@ export const AlertsDashboard: React.FC = () => {
     loadAlerts();
 
     return () => controller.abort();
-  }, [managerId, filters, pageUrl, hasManagerId, refreshToken]);
+  }, [token, filters, pageUrl, hasToken, refreshToken]);
 
   const handleDismissAlert = useCallback(async (alertId: string) => {
     try {
       setDismissingId(alertId);
       setError(null);
 
-      await dismissAlert(alertId);
+      await dismissAlert(alertId, token.trim());
 
       // Re-fetch current page to keep pagination & filters consistent
       setRefreshToken((prev) => prev + 1);
@@ -113,7 +119,7 @@ export const AlertsDashboard: React.FC = () => {
     } finally {
       setDismissingId(null);
     }
-  }, []);
+  }, [token]);
 
   const handleFiltersChange = (next: FilterState) => {
     setFilters(next);
@@ -150,25 +156,31 @@ export const AlertsDashboard: React.FC = () => {
       <div className="flex flex-col gap-3 border-b border-slate-800 pb-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-2">
           <label
-            htmlFor="manager-id"
+            htmlFor="api-token"
             className="text-xs font-medium uppercase tracking-wide text-slate-400"
           >
-            Manager ID
+            API token
           </label>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <input
-              id="manager-id"
-              type="text"
-              value={managerId}
+              id="api-token"
+              type="password"
+              value={token}
               onChange={(e) => {
-                setManagerId(e.target.value);
+                const nextToken = e.target.value;
+                setToken(nextToken);
+                if (nextToken.trim()) {
+                  sessionStorage.setItem(TOKEN_STORAGE_KEY, nextToken.trim());
+                } else {
+                  sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+                }
                 setPageUrl(null);
               }}
               className="w-full rounded-md border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 outline-none ring-0 transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/40 sm:max-w-xs"
-              placeholder="e.g. MGR001"
+              placeholder="Paste your local demo token"
             />
             <p className="text-xs text-slate-500">
-              Seed data uses <code className="font-mono">MGR001</code>.
+              Stored only for this browser tab.
             </p>
           </div>
         </div>
@@ -193,9 +205,9 @@ export const AlertsDashboard: React.FC = () => {
         </div>
       )}
 
-      {!hasManagerId && !error && (
+      {!hasToken && !error && (
         <div className="rounded-md border border-amber-500/40 bg-amber-950/40 px-3 py-2 text-sm text-amber-100">
-          Enter a manager ID to view alerts.
+          Enter the token printed by the seed command to view alerts.
         </div>
       )}
 
@@ -248,5 +260,4 @@ export const AlertsDashboard: React.FC = () => {
     </section>
   );
 };
-
 

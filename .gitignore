@@ -3,7 +3,10 @@ venv/
 .venv/
 env/
 __pycache__/
+**/__pycache__/
 *.py[cod]
+.coverage
+coverage.xml
 *.sqlite3
 
 # ===== Django =====
@@ -14,6 +17,7 @@ media/
 node_modules/
 build/
 dist/
+alerts-frontend/.env.local
 
 # ===== Logs / Temp =====
 *.log
